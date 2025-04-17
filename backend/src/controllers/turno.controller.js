@@ -26,26 +26,26 @@ turnoController.getAllTurnos = async (req, res) => {
 
 turnoController.getTurnoById = async (req, res) => {
   try {
-    const { idTurno } = req.prams;
+    const { id } = req.params;
 
-    if (!mongoose.Types.ObjectId.isValid(idTurno)) {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
       return response(
         res,
         400,
         false,
         "",
-        `El id ${idTurno} no es valido para la base de datos`
+        `El id ${id} no es valido para la base de datos`
       );
     }
 
-    const turnoFound = await turnoModel.findById({ _id: idTurno });
+    const turnoFound = await turnoModel.findById({ _id: id });
     if (!turnoFound) {
       return response(
         res,
         404,
         false,
         "",
-        `No se encontro el turno con el id ${idTurno}`
+        `No se encontro el turno con el id ${id}`
       );
     }
 
@@ -54,7 +54,7 @@ turnoController.getTurnoById = async (req, res) => {
       200,
       true,
       turnoFound,
-      `Turno encontrado con el id ${idTurno}`
+      `Turno encontrado con el id ${id}`
     );
   } catch (error) {
     return handleError(res, error);
@@ -115,9 +115,9 @@ turnoController.getTurnoByPendiente = async (req, res) => {
 
 turnoController.postTurno = async (req, res) => {
   try {
-    const { tipo, estado, usuario, monto, metodoPago } = req.body;
+    const { tipo, estado, usuario, monto, metodoPago, producto } = req.body;
 
-    if (!tipo || !estado || !usuario || !monto || !metodoPago) {
+    if (!tipo || !estado || !usuario || !monto || !metodoPago || !producto) {
       return response(
         res,
         400,
@@ -134,6 +134,16 @@ turnoController.postTurno = async (req, res) => {
         false,
         "",
         "Los datos del usuario son obligatorios"
+      );
+    }
+
+    if (!producto.nombreProducto || !producto.especificaciones) {
+      return response(
+        res,
+        404,
+        false,
+        "",
+        "Los datos del producto son obligatorios"
       );
     }
 
@@ -190,31 +200,31 @@ turnoController.postTurno = async (req, res) => {
   }
 };
 
-// ** Cambiar el estado del turno
+// ** Actualizar turno
 
 turnoController.putTurno = async (req, res) => {
   try {
-    const { idTurno } = req.params;
-    const { tipo, estado, usuario } = req.body;
+    const { id } = req.params;
+    const { tipo, estado, usuario, producto } = req.body;
 
-    if (!mongoose.Types.ObjectId.isValid(idTurno)) {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
       return response(
         res,
         400,
         false,
         "",
-        `El id ${idTurno} no es valido para la base de datos`
+        `El id ${id} no es valido para la base de datos`
       );
     }
 
-    const turnoFound = await turnoModel.findById({ _id: idTurno });
+    const turnoFound = await turnoModel.findById({ _id: id });
     if (!turnoFound) {
       return response(
         res,
         404,
         false,
         "",
-        `No se encontro el turno con el id ${idTurno}`
+        `No se encontro el turno con el id ${id}`
       );
     }
 
@@ -269,29 +279,68 @@ turnoController.putTurno = async (req, res) => {
 
 turnoController.deleteTurno = async (req, res) => {
   try {
-    const { idTurno } = req.params;
-    const { tipo, estado, usuario } = req.body;
+    const { id } = req.params;
 
-    if (!mongoose.Types.ObjectId.isValid(idTurno)) {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
       return response(
         res,
         400,
         false,
         "",
-        `El id ${idTurno} no es valido para la base de datos`
+        `El id ${id} no es valido para la base de datos`
       );
     }
 
-    const turnoFound = await turnoModel.findById({ _id: idTurno });
+    const turnoFound = await turnoModel.findById({ _id: id });
     if (!turnoFound) {
       return response(
         res,
         404,
         false,
         "",
-        `No se encontro el turno con el id ${idTurno}`
+        `No se encontro el turno con el id ${id}`
       );
     }
+
+    await turnoFound.deleteOne();
+    return response(res, 200, true, "", `Turno eliminado con el id ${id}`);
+  } catch (error) {
+    return handleError(res, error);
+  }
+};
+
+// ** Obtener turnos por estado
+
+turnoController.getTurnosByEstado = async (req, res) => {
+  try {
+    const { estado } = req.params;
+
+    if (
+      estado != "pendiente".toLowerCase() ||
+      estado != "atendido".toLowerCase() ||
+      estado != "cancelado".toLowerCase()
+    ) {
+      return response(
+        res,
+        400,
+        false,
+        "",
+        "El estado del turno solo puede ser pendiente, atendido o cancelado"
+      );
+    }
+
+    const turnoByEstado = await turnoModel.find({ estado: estado });
+    if (turnoByEstado.length === 0) {
+      return response(
+        res,
+        404,
+        false,
+        "",
+        `No se encontraron turnos con el estado ${estado}`
+      );
+    }
+
+    return response(res, 200, true, "", `Turnos con el estado ${estado}`);
   } catch (error) {
     return handleError(res, error);
   }

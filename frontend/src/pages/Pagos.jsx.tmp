@@ -1,0 +1,193 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { FaMoneyBillWave, FaUser, FaCalendar, FaEdit, FaTrash } from 'react-icons/fa';
+import ListPage from '../components/ListPage';
+import { toast } from 'react-hot-toast';
+
+const Pagos = () => {
+  const navigate = useNavigate();
+  const [pagos, setPagos] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedFilter, setSelectedFilter] = useState('todos');
+
+  useEffect(() => {
+    fetchPagos();
+  }, []);
+
+  const fetchPagos = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        navigate('/login');
+        return;
+      }
+
+      const response = await fetch('http://localhost:3000/pago', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al obtener pagos');
+      }
+
+      const data = await response.json();
+      setPagos(data.data);
+    } catch (error) {
+      console.error('Error:', error);
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddPago = () => {
+    toast.error('Función en desarrollo');
+  };
+
+  const handleEditPago = (id) => {
+    toast.error('Función en desarrollo');
+  };
+
+  const handleDeletePago = async (id) => {
+    if (window.confirm('¿Estás seguro de que deseas eliminar este pago?')) {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch(`http://localhost:3000/pago/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Error al eliminar pago');
+        }
+
+        toast.success('Pago eliminado correctamente');
+        fetchPagos();
+      } catch (error) {
+        console.error('Error:', error);
+        toast.error(error.message);
+      }
+    }
+  };
+
+  const filterOptions = [
+    { value: 'todos', label: 'Todos los pagos' },
+    { value: 'efectivo', label: 'Efectivo' },
+    { value: 'tarjeta', label: 'Tarjeta' },
+    { value: 'transferencia', label: 'Transferencia' }
+  ];
+
+  const filteredPagos = pagos.filter(pago => {
+    const matchesSearch = 
+      pago.cliente?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      pago.concepto?.toLowerCase().includes(searchTerm.toLowerCase());
+
+    if (selectedFilter === 'todos') return matchesSearch;
+    return matchesSearch && pago.metodoPago === selectedFilter;
+  });
+
+  const formatFecha = (fecha) => {
+    return new Date(fecha).toLocaleDateString('es-ES', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const formatMonto = (monto) => {
+    return new Intl.NumberFormat('es-AR', {
+      style: 'currency',
+      currency: 'ARS'
+    }).format(monto);
+  };
+
+  const getMetodoPagoColor = (metodoPago) => {
+    switch (metodoPago) {
+      case 'efectivo':
+        return 'bg-green-500/20 text-green-300';
+      case 'tarjeta':
+        return 'bg-blue-500/20 text-blue-300';
+      case 'transferencia':
+        return 'bg-purple-500/20 text-purple-300';
+      default:
+        return 'bg-gray-500/20 text-gray-300';
+    }
+  };
+
+  const renderPago = (pago) => (
+    <div key={pago._id} className="bg-white/10 backdrop-blur-lg p-6 rounded-lg border border-white/20 hover:border-pink-500/50 transition-all duration-300">
+      <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+        <div className="flex-1">
+          <div className="flex items-center space-x-3 mb-3">
+            <FaUser className="text-pink-500" />
+            <h2 className="text-xl font-bold text-white">{pago.cliente}</h2>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-gray-300">
+            <div className="flex items-center space-x-2">
+              <FaMoneyBillWave className="text-gray-400" />
+              <span className="text-xl font-semibold text-green-400">{formatMonto(pago.monto)}</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <FaCalendar className="text-gray-400" />
+              <span>{formatFecha(pago.fecha)}</span>
+            </div>
+          </div>
+
+          <div className="mt-3 flex flex-wrap gap-2">
+            <span className={`px-3 py-1 rounded-full text-sm font-medium ${getMetodoPagoColor(pago.metodoPago)}`}>
+              {pago.metodoPago.charAt(0).toUpperCase() + pago.metodoPago.slice(1)}
+            </span>
+            {pago.concepto && (
+              <span className="px-3 py-1 rounded-full text-sm font-medium bg-gray-500/20 text-gray-300">
+                {pago.concepto}
+              </span>
+            )}
+          </div>
+        </div>
+
+        <div className="flex space-x-2">
+          <button
+            onClick={() => handleEditPago(pago._id)}
+            className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded transition-all duration-300"
+          >
+            <FaEdit />
+          </button>
+          <button
+            onClick={() => handleDeletePago(pago._id)}
+            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-500/10 rounded transition-all duration-300"
+          >
+            <FaTrash />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <ListPage
+      title="Pagos"
+      items={filteredPagos}
+      onAdd={handleAddPago}
+      searchTerm={searchTerm}
+      onSearchChange={setSearchTerm}
+      filterOptions={filterOptions}
+      selectedFilter={selectedFilter}
+      onFilterChange={setSelectedFilter}
+      loading={loading}
+      error={error}
+      renderItem={renderPago}
+      addButtonText="Registrar Pago"
+    />
+  );
+};
+
+export default Pagos;

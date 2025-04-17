@@ -13,7 +13,8 @@ dotenv.config();
 
 const app = express();
 
-app.set("Port", process.env.PORT);
+const PORT = process.env.PORT || 3000;
+app.set("Port", PORT);
 app.use(morgan("dev"));
 app.use(cors({ origin: "*" }));
 app.use(express.urlencoded({ extended: true }));

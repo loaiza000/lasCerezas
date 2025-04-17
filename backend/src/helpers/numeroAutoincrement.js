@@ -1,4 +1,4 @@
-import { configModel } from "../models/Config.js";
+import { configModel } from "../models/config.model.js";
 
 export const numeroAutoincrement = async () => {
   const config = await configModel.findOneAndUpdate(

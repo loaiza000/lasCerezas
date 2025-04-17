@@ -31,7 +31,15 @@ const turnoSchema = new Schema(
         required: [true, "El campo celular de usuario es requerido"],
       },
     },
-    pago: { type: mongoose.Schema.Types.ObjectId, ref: "pago"},
+    producto: {
+      nombreProduco: {
+        type: String,
+        required: [true, "El nombre del producto es requerido"],
+      },
+      especificaciones: { type: String },
+    },
+
+    pago: { type: mongoose.Schema.Types.ObjectId, ref: "pago" },
   },
   {
     timestamps: true,

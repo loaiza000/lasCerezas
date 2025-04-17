@@ -1,10 +1,10 @@
 import mongoose from "mongoose";
+import bcrypt from "bcrypt";
 import { encryptPassword } from "../helpers/cncrypt.password.js";
 import { handleError } from "../helpers/error.handler.js";
 import { generateToken } from "../helpers/generateToken.js";
 import { response } from "../helpers/response.js";
 import { usuarioModel } from "../models/usuario.model.js";
-import bcrypt from "bcrypt";
 
 const usuarioController = {};
 
@@ -26,8 +26,8 @@ usuarioController.getUsuarios = async (req, res) => {
 
 usuarioController.findUserById = async (req, res) => {
   try {
-    const { idUser } = req.prams;
-    if (!mongoose.Types.ObjectId.isValid(idUser)) {
+    const { id } = req.params;
+    if (!mongoose.Types.ObjectId.isValid(id)) {
       return response(
         res,
         400,
@@ -37,14 +37,14 @@ usuarioController.findUserById = async (req, res) => {
       );
     }
 
-    const usuario = await usuarioModel.findById({ _id: idUser });
+    const usuario = await usuarioModel.findById({ _id: id });
     if (!usuario) {
       return response(
         res,
         404,
         false,
         "",
-        `No se encontro al usuario con el id ${idUser}`
+        `No se encontro al usuario con el id ${id}`
       );
     }
 
@@ -56,10 +56,10 @@ usuarioController.findUserById = async (req, res) => {
 
 usuarioController.updateUser = async (req, res) => {
   try {
-    const { idUser } = req.params;
+    const { id } = req.params;
     const { email, password, rol } = req.body;
 
-    if (!mongoose.Types.ObjectId.isValid(idUser)) {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
       return response(
         res,
         400,
@@ -69,14 +69,14 @@ usuarioController.updateUser = async (req, res) => {
       );
     }
 
-    const usuario = await usuarioModel.findById({ _id: idUser });
+    const usuario = await usuarioModel.findById({ _id: id });
     if (!usuario) {
       return response(
         res,
         404,
         false,
         "",
-        `No se encontro al usuario con el id ${idUser}`
+        `No se encontro al usuario con el id ${id}`
       );
     }
 
@@ -118,9 +118,9 @@ usuarioController.updateUser = async (req, res) => {
 
 usuarioController.deleteUser = async (req, res) => {
   try {
-    const { idUser } = req.params;
+    const { id } = req.params;
 
-    if (!mongoose.Types.ObjectId.isValid(idUser)) {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
       return response(
         res,
         400,
@@ -130,14 +130,14 @@ usuarioController.deleteUser = async (req, res) => {
       );
     }
 
-    const usuario = await usuarioModel.findById({ _id: idUser });
+    const usuario = await usuarioModel.findById({ _id: id });
     if (!usuario) {
       return response(
         res,
         404,
         false,
         "",
-        `No se encontro al usuario con el id ${idUser}`
+        `No se encontro al usuario con el id ${id}`
       );
     }
 
@@ -147,7 +147,7 @@ usuarioController.deleteUser = async (req, res) => {
       200,
       true,
       "",
-      `Usuario desactivado con el id ${idUser}`
+      `Usuario desactivado con el id ${id}`
     );
   } catch (error) {
     return handleError(res, error);
@@ -195,18 +195,16 @@ usuarioController.registerUser = async (req, res) => {
       );
     }
 
-    const passwordEncryptada = encryptPassword(password);
+    const passwordEncryptada = await encryptPassword(password);
     const newUser = await usuarioModel.create({
       email,
       password: passwordEncryptada,
+      rol
     });
-    await newUser.save();
     const token = generateToken({ user: newUser._id });
     return response(res, 201, true, {
       ...newUser._doc,
-      password: passwordEncryptada,
-      token,
-      rol,
+      token
     });
   } catch (error) {
     return handleError(res, error);
@@ -225,27 +223,34 @@ usuarioController.loginUser = async (req, res) => {
         400,
         false,
         "",
-        "El password y el amil son requeridos"
+        "El password y el email son requeridos"
       );
     }
 
-    const emailExist = await usuarioModel.findOne({ email: email });
-    if (!emailExist) {
+    const user = await usuarioModel.findOne({ email: email });
+    if (!user) {
       return response(res, 404, false, "", `Email no encontrado`);
     }
 
-    const validPassword = await bcrypt.compare(password, email.password);
+    const validPassword = await bcrypt.compare(password, user.password);
     if (!validPassword) {
       return response(res, 404, false, "", "Password incorrecto");
     }
 
-    const token = generateToken(emailExist);
+    const token = generateToken({ user: user._id });
 
     return response(
       res,
       200,
       true,
-      { token, user: emailExist, rol, password: null },
+      { 
+        token,
+        user: {
+          _id: user._id,
+          email: user.email,
+          rol: user.rol
+        }
+      },
       "Login exitoso"
     );
   } catch (error) {
